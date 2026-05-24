@@ -154,6 +154,12 @@ Neural models produce near-flat predictions for Area 4556 despite actual traffic
 
 ---
 
+## AI Tool Usage
+
+AI assistance (Claude, Anthropic) was used as a guide in Task 1 (memory optimisation strategy), Task 2 (interpreting ADF and ACF/PACF results), and Task 3 (articulating SARIMA parameter justification). All implementation, analysis, and interpretation are the author's own. Full details are documented in the report.
+
+---
+
 ## References
 
 [1] G. Barlacchi et al., "A multi-source dataset of urban life in the city of Milan and the Province of Trentino," *Sci Data* 2, 150055 (2015). https://doi.org/10.1038/sdata.2015.55
