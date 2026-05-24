@@ -18,6 +18,8 @@ The dataset records internet activity (CDR counts) for a 100×100 grid of city a
 
 ```
 ├── Milan_Traffic_Forecasting.ipynb   # Main notebook — all tasks
+├── data/
+│   └── sample_data.parquet           # Filtered sample: three target areas, Dec 9–22
 ├── README.md
 ```
 
@@ -26,9 +28,8 @@ The dataset records internet activity (CDR counts) for a 100×100 grid of city a
 ## Requirements
 
 ### Hardware
-- Google Colab (recommended) — the notebook is written for Colab with Google Drive
-- GPU runtime recommended for LSTM and RNN training (Runtime → Change runtime type → T4 GPU)
-- ~12 GB RAM (standard Colab session is sufficient after memory optimisation)
+
+Google Colab is required — the notebook uses Google Drive mounts and Colab-specific runtime features. GPU runtime is recommended for LSTM and RNN training (Runtime → Change runtime type → T4 GPU). A standard Colab session (~12 GB RAM) is enough after memory optimisation.
 
 ### Python dependencies
 
@@ -37,8 +38,6 @@ All installed automatically in the first notebook cell:
 ```bash
 pip install pyarrow statsmodels scikit-learn tensorflow matplotlib seaborn scipy psutil
 ```
-
-Key libraries:
 
 | Library | Purpose |
 |---|---|
@@ -53,7 +52,7 @@ Key libraries:
 
 ## Dataset
 
-The dataset is the **Telecom Italia Big Data Challenge** — Milan telecommunications activity.
+The dataset is the Telecom Italia Big Data Challenge — Milan telecommunications activity.
 
 - **Download:** [Harvard Dataverse — Telecommunications activity](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/EGZHFV)
 - **Grid reference:** [Harvard Dataverse — Grid dataset](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/QJWLFU)
@@ -64,33 +63,54 @@ The dataset is the **Telecom Italia Big Data Challenge** — Milan telecommunica
 > `square_id | time_interval | country_code | sms_in | sms_out | call_in | call_out | internet_activity`
 > Only `square_id`, `time_interval`, and `internet_activity` are used.
 
+A filtered sample covering the three target areas (Dec 9–22) is included in `data/sample_data.parquet` — enough to run the forecasting models without downloading the full 5 GB dataset.
+
 ---
 
 ## How to Run
 
-### 1. Set up Google Drive
+The notebook runs on Google Colab. All data loading uses Google Drive paths, so there is no local execution path. The steps below work on Windows, Linux, and macOS — the OS doesn't matter since everything runs in the browser.
 
-Upload all daily `.txt` files to a folder in your Google Drive, e.g.:
+### 1. Open the notebook in Colab
+
+Go to [colab.research.google.com](https://colab.research.google.com), click **File → Upload notebook**, and select `Milan_Traffic_Forecasting.ipynb`.
+
+### 2. Set the runtime
+
+Runtime → Change runtime type → **T4 GPU**
+
+### 3. Choose a data option
+
+**Option A — Sample data (quick start)**
+
+Upload `data/sample_data.parquet` from this repo to your Google Drive, then update the path in the Setup cell:
+
+```python
+SAMPLE_PATH = Path('/content/drive/MyDrive/milan_traffic/sample_data.parquet')
+```
+
+This covers the three target areas for Dec 9–22 and is enough to run all Task 3 models.
+
+**Option B — Full dataset**
+
+Download all 62 `.txt` files from Harvard Dataverse and upload them to Google Drive:
 
 ```
 MyDrive/milan_traffic/raw/
 ```
 
-### 2. Update the data path
-
-In the **Setup** cell, set `DATA_DIR` to your folder:
+Then set in the Setup cell:
 
 ```python
 DATA_DIR     = Path('/content/drive/MyDrive/milan_traffic/raw')
 PARQUET_PATH = Path('/content/drive/MyDrive/milan_traffic/milan_traffic.parquet')
 ```
 
-### 3. Run cells top to bottom
+On first run, the notebook builds a compressed Parquet cache (~200 MB) from the raw files. This takes 10–20 minutes and only happens once. Subsequent runs load from Parquet in seconds.
 
-- **First run:** Builds a snappy-compressed Parquet cache (~200 MB) from all raw `.txt` files. This takes 10–20 minutes depending on connection speed and only happens once.
-- **Subsequent runs:** Load directly from Parquet in seconds — raw CSV parsing is skipped entirely.
+### 4. Run cells top to bottom
 
-> The notebook also includes an automated download cell that fetches files from Harvard Dataverse via the API, if you prefer not to download manually.
+All dependencies install in the first cell. Mount Google Drive when prompted, then run through the notebook sequentially.
 
 ---
 
@@ -118,12 +138,12 @@ All three models are trained and evaluated independently on each of three target
 | Area 4159 | Mid-traffic area, downward trend through late November |
 | Area 4556 | Stable, moderate traffic, higher noise |
 
-**Test period:** December 16–22, 2013  
+**Test period:** December 16–22, 2013
 **Input window:** 1,008 steps (7 days × 144 steps/day at 10-minute resolution)
 
 ### SARIMA
 - Order `(2, 0, 2)(1, 0, 1, 24)` derived from ADF test (d=0) and ACF/PACF analysis (p=2, q=2)
-- Resampled to hourly resolution before fitting (s=24 instead of s=144) — roughly 36× cheaper
+- Resampled to hourly resolution before fitting (s=24 instead of s=144) — roughly 36x cheaper
 - Each hourly forecast repeated 6 times to restore 10-minute resolution
 
 ### LSTM
@@ -140,23 +160,23 @@ All three models are trained and evaluated independently on each of three target
 
 ## Key Results
 
-SARIMA outperforms both neural models on MAE, MAPE, and RMSE across all three areas. The dataset's strong, stable daily seasonality and confirmed stationarity (ADF) favour a well-specified statistical model over deep learning.
+SARIMA outperforms both neural models on MAE, MAPE, and RMSE across all three areas. The dataset's strong daily seasonality and confirmed stationarity favour a well-specified statistical model over deep learning here.
 
-The RNN's errors are roughly twice the size of LSTM's on the high-traffic area (Area 5161 MAE: RNN 1,288 vs LSTM 629) — consistent with vanishing gradient degradation over the 1,008-step window.
+The RNN's errors are roughly twice the size of LSTM's on the high-traffic area (Area 5161 MAE: RNN 1,288 vs LSTM 629) — consistent with vanishing gradient problems over a 1,008-step window.
 
-**One exception:** Area 4159 (lowest traffic, smooth signal) — RNN beats LSTM on MAE (119 vs 173). Short-range memory suffices for a low-amplitude series.
+One exception: Area 4159 (lowest traffic, smooth signal) — RNN beats LSTM on MAE (119 vs 173). Short-range memory is enough for a low-amplitude series.
 
 ---
 
 ## Failure Case
 
-Neural models produce near-flat predictions for Area 4556 despite actual traffic swinging 200–900 CDR daily. The cause is autoregressive inference: each prediction is fed back as input. Once predictions drift flat, the context window fills with the model's own history — the overnight trough signal disappears and predictions never recover. December 18–19 is the worst period across all models (traffic peaks above the training distribution).
+Neural models produce near-flat predictions for Area 4556 despite actual traffic swinging 200–900 CDR daily. The cause is autoregressive inference: each prediction is fed back as input. Once predictions drift flat, the context window fills with the model's own history and the overnight trough signal disappears. December 18–19 is the worst period across all models, with traffic peaking above the training distribution.
 
 ---
 
 ## AI Tool Usage
 
-AI assistance (Claude, Anthropic) was used as a guide in Task 1 (memory optimisation strategy), Task 2 (interpreting ADF and ACF/PACF results), and Task 3 (articulating SARIMA parameter justification).  Full details are documented in the report. 
+Claude was used in three areas of this assignment. In Task 1, I used it to think through the memory optimisation approach — dtype downcasting, chunked reading, Parquet caching — mostly to check that my reasoning held up. In Task 2, I had the ADF output and ACF/PACF plots and used it as a sounding board to work out what they meant for model selection. Task 3 was where I relied on it most: parameter justification, getting the SARIMA implementation started, and working out how to structure the sequential forecast and error analysis plots. Claude helped me get unstuck and think things through.
 
 ---
 
@@ -168,6 +188,6 @@ AI assistance (Claude, Anthropic) was used as a guide in Task 1 (memory optimisa
 
 [3] Grid dataset: https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/QJWLFU
 
-[11] GitHub repository: https://github.com/PapiWinnie/Time_Series_Forecasting_Formative_1
+[4] GitHub repository: https://github.com/PapiWinnie/Time_Series_Forecasting_Formative_1
 
-[12] Demo video: https://drive.google.com/file/d/1mB7luuVoLzzC6o5Lo6tDix35pQ1FGlHJ/view?usp=sharing
+[5] Demo video: https://drive.google.com/file/d/1mB7luuVoLzzC6o5Lo6tDix35pQ1FGlHJ/view?usp=sharing
