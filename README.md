@@ -156,7 +156,7 @@ Neural models produce near-flat predictions for Area 4556 despite actual traffic
 
 ## AI Tool Usage
 
-AI assistance (Claude, Anthropic) was used as a guide in Task 1 (memory optimisation strategy), Task 2 (interpreting ADF and ACF/PACF results), and Task 3 (articulating SARIMA parameter justification). All implementation, analysis, and interpretation are the author's own. Full details are documented in the report.
+AI assistance (Claude, Anthropic) was used as a guide in Task 1 (memory optimisation strategy), Task 2 (interpreting ADF and ACF/PACF results), and Task 3 (articulating SARIMA parameter justification).  Full details are documented in the report. 
 
 ---
 
